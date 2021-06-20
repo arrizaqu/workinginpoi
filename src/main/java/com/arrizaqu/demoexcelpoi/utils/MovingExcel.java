@@ -1,130 +1,18 @@
-package com.arrizaqu.demoexcelpoi;
+package com.arrizaqu.demoexcelpoi.utils;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 
-import org.apache.poi.hssf.util.CellReference;
 import org.apache.poi.ss.usermodel.Cell;
-//import org.apache.poi.ss.usermodel.CellCopyPolicy;
 import org.apache.poi.ss.usermodel.CellStyle;
-//import org.apache.poi.ss.usermodel.CellType;
 import org.apache.poi.ss.usermodel.DataFormatter;
-import org.apache.poi.ss.usermodel.DateUtil;
 import org.apache.poi.ss.usermodel.Row;
-import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
 
-@SpringBootTest
-class DemoexcelpoiApplicationTests {
-
-	@Test
-	void contextLoads() {
-	}
-	
-	@Test
-	void testPoi() throws IOException {
-		String path = "C:\\Users\\arrizaqu\\Desktop\\ExcelTemplate.xlsx";
-		String dest = "C:\\Users\\arrizaqu\\Desktop\\ExcelTemplateC.xlsx";
-		buildReConstructExcel(path, dest);
-	}
-	
-	
-	@Test
-	void testPoi2() throws IOException {
-		String path = "C:\\Users\\arrizaqu\\Desktop\\combinasi\\ExcelTemplate.xlsx";
-		String destination = "C:\\Users\\arrizaqu\\Desktop\\combinasi\\ExcelTemplateC.xlsx";
-		buildReConstructExcel_2(path, destination);
-	}
-	
-	private void buildReConstructExcel(String path, String dest) throws IOException {
-		FileInputStream file = new FileInputStream(new File(path));
-		XSSFWorkbook workbook = new XSSFWorkbook(file);
-		
-		//data source formcode
-		List<ExcelFormCode> efcs = new ArrayList();
-		efcs.add(new ExcelFormCode("1697000",7, 7, 24, null, 13));
-		efcs.add(new ExcelFormCode("1694000a", 5, 7, 24, null, 13));
-		efcs.add(new ExcelFormCode("1693000", 5, 7, 24, null, 13));
-		efcs.add(new ExcelFormCode("1692000", 7, 7, 24, null, 13));
-		efcs.add(new ExcelFormCode("1691000a", 5, 7, 24, null, 13));
-		efcs.add(new ExcelFormCode("1640300", 5, 7, 2, null, 12));
-		efcs.add(new ExcelFormCode("1640200", 4, 7, 3, null, 31));
-		efcs.add(new ExcelFormCode("1640100", 4, 7, 2, null, 13));
-		efcs.add(new ExcelFormCode("1621100", 8, 7, 12, null, 13));
-		efcs.add(new ExcelFormCode("1621000a", 6, 7, 12, null, 13));
-		efcs.add(new ExcelFormCode("1620300", 7, 7, 2, null, 12));
-		efcs.add(new ExcelFormCode("1620200", 6, 7, 3, null, 31));
-		efcs.add(new ExcelFormCode("1620100", 6, 7, 2, null, 13));
-		efcs.add(new ExcelFormCode("1612000", 12, 7, 3, null, 8));
-		efcs.add(new ExcelFormCode("1611000", 12, 7, 3, null, 38));
-		
-		//execute re-constract
-		for(ExcelFormCode efc: efcs) {
-			rotateMergeEfectPoi3(workbook, efc);
-		}
-		
-		//Write the workbook in file system
-        FileOutputStream out = new FileOutputStream(new File(dest));
-        workbook.write(out);
-        
-        //release
-        file.close();
-        out.close();
-	}
-	
-	private void buildReConstructExcel_2(String path, String dest) throws IOException {
-		FileInputStream file = new FileInputStream(new File(path));
-		XSSFWorkbook workbook = new XSSFWorkbook(file);
-		
-		//data source formcode
-		List<ExcelFormCode> efcs = new ArrayList();
-		List<ExcelFormCode> efcDoubleMerge = new ArrayList();
-		
-		efcDoubleMerge.add(new ExcelFormCode("4625100",6, 5, 3, "3,3,3", 0));
-		efcDoubleMerge.add(new ExcelFormCode("4623100",6, 5, 2, "3,3,3", 0));
-		efcDoubleMerge.add(new ExcelFormCode("4622100",6, 5, 2, "3,3,3", 0));
-		efcDoubleMerge.add(new ExcelFormCode("4621100",6, 5, 2, "3,3,3", 0));
-		efcDoubleMerge.add(new ExcelFormCode("4611100a",6, 7, 3, "3,3,3", 0));
-		
-		efcs.add(new ExcelFormCode("4695000", 5, 7, 24, null, 13));
-		efcs.add(new ExcelFormCode("4626100", 4, 5, 3, null, 3));
-		efcs.add(new ExcelFormCode("4624100", 4, 5, 6, null, 3));
-		efcs.add(new ExcelFormCode("4613100a", 9, 9, 3, null, 12));
-		efcs.add(new ExcelFormCode("4613200a", 9, 9, 3, null, 12));
-		efcs.add(new ExcelFormCode("4612200a", 9, 9, 3, null, 9));
-		efcs.add(new ExcelFormCode("4612100a", 9, 9, 3, null, 9));
-		efcs.add(new ExcelFormCode("4612000", 12, 7, 3, null, 8));
-		efcs.add(new ExcelFormCode("4611200a", 4, 7, 3, null, 3));
-		efcs.add(new ExcelFormCode("4611000", 12, 7, 3, null, 26));
-
-		//execute re-constract double rowspan / merge
-		for(ExcelFormCode drs: efcDoubleMerge) {
-			rotateExcelDoubleMergeEfectPoi3(workbook, drs);
-		}
-		
-		//execute re-constract singgle rowspan / merge
-		for(ExcelFormCode ds: efcs) {
-			rotateMergeEfectPoi3(workbook, ds);
-		}
-		
-		//Write the workbook in file system
-        FileOutputStream out = new FileOutputStream(new File(dest));
-        workbook.write(out);
-        
-        //release
-        file.close();
-        out.close();
-	}
+public class MovingExcel {
 
 	/*
 	 * 1. clear merge of moving column
@@ -530,3 +418,4 @@ class ExcelFormCode{
 	}
 	
 }
+

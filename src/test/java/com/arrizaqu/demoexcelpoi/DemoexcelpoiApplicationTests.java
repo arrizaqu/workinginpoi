@@ -33,18 +33,15 @@ class DemoexcelpoiApplicationTests {
 	
 	@Test
 	void testPoi() throws IOException {
-		String path = "C:\\Users\\arrizaqu\\Desktop\\combinasi\\ExcelTemplate.xlsx";
-		String destination = "C:\\Users\\arrizaqu\\Desktop\\combinasi\\ExcelTemplateC.xlsx";
-		int maxColumn = 9;
-		String formCode = "4613200a";
-		int startRow = 9;
-		int itemNum = 12;
-		int parentNum = 3;
+		String path = "C:\\Users\\arrizaqu\\Desktop\\ExcelTemplate.xlsx";
+		String destination = "C:\\Users\\arrizaqu\\Desktop\\ExcelTemplateC.xlsx";
+		int maxColumn = 7;
+		String formCode = "1697000";
+		int startRow = 7;
+		int itemNum = 13;
+		int parentNum = 24;
 		
-		for (int i = 0; i < 1; i++) {
-			//rotateExcel(formCode, path, destination, maxColumn);
-			rotateExcelEfect(formCode, path, destination, maxColumn, startRow, itemNum, parentNum);
-		}
+		rotateMergeEfectPoi3(new ExcelFormCode(path, destination, maxColumn, formCode, startRow, parentNum, null, itemNum));
 	}
 	
 	@Test
@@ -56,10 +53,114 @@ class DemoexcelpoiApplicationTests {
 		int startRow = 5;
 		int parentNum = 2;
 		String subParentNum = "3,3,3";
-		for (int i = 0; i < 1; i++) {
-			rotateExcelDoubleMergeEfectPoi3(new ExcelFormCode(path, destination, maxColumn, formCode, startRow, parentNum, subParentNum));
+		
+		rotateExcelDoubleMergeEfectPoi3(new ExcelFormCode(path, destination, maxColumn, formCode, startRow, parentNum, subParentNum, 0));
+		rotateExcelDoubleMergeEfectPoi3(new ExcelFormCode(path, destination, 6, "4625100", 5, 3, "3,3,3", 0));
+	}
+	
+	/*
+	 * 1. clear merge of moving column
+	 * 2. copy sub parent and removing cell
+	 * 3. paste or write data cell to destination column
+	 * 4. adding merging new final colum of paste
+	 * */
+	public static void rotateMergeEfectPoi3(ExcelFormCode efc) throws IOException {
+		FileInputStream file = new FileInputStream(new File(efc.getPath()));
+		XSSFWorkbook workbook = new XSSFWorkbook(file);
+		XSSFSheet sheet = workbook.getSheet(efc.getFormCode());
+		DataFormatter dataFormatter = new DataFormatter();
+		int columnParent = efc.getMaxColumn();
+		
+		//clear old merge column
+		List<MetaCellMerge> cm1 = new ArrayList();
+		
+		int fr = efc.getStartRow();
+		int lr = 0;
+		for (int i = 0; i < efc.getParentNum(); i++) {
+			lr = fr + efc.getItemNum() - 1;
+			System.out.println("pos : "+i+", fr : "+ fr + ", lr: "+ lr + ", colum : "+ (efc.getMaxColumn() - 1));
+			cm1.add(new MetaCellMerge(fr, lr, efc.getMaxColumn()-1, efc.getMaxColumn()-1));
+			fr = fr + efc.getItemNum();
+		}	
+		
+		for (MetaCellMerge mc : cm1) {
+    		for(int i=0; i < sheet.getNumMergedRegions(); ++i) {
+	            CellRangeAddress range = sheet.getMergedRegion(i);    
+	            if ( range.getFirstRow() == mc.getFirstRow() &&
+	        			range.getFirstColumn() == mc.getFirstCol() &&
+	             		range.getLastColumn() == mc.getLastCol() &&
+	             		range.getLastRow() == mc.getLastRow()
+	             		){
+	                 sheet.removeMergedRegion(i);
+	        	 }
+	        }
 		}
-		//rotateExcelDoubleMergeEfectPoi3(formCode, path, destination, maxColumn, startRow,subParentNum, parentNum);
+		
+		//copy
+		List<MetaCell> parentCell = new ArrayList();
+		List<MetaCell> itemCell = new ArrayList();
+		
+		for (Row row: sheet) {
+        	if(row.getRowNum() >= efc.getStartRow()) {
+        		MetaCell mc = new MetaCell();
+        		MetaCell mc0 = new MetaCell();
+        		
+        		Cell cell = row.getCell(efc.getMaxColumn()-1);
+        		Cell cell0 = row.getCell(efc.getMaxColumn());
+        		
+        		String name = dataFormatter.formatCellValue(cell);
+            	String name0 = dataFormatter.formatCellValue(cell0);
+        		
+            	mc.setValue(name);
+            	mc0.setValue(name0);
+            	
+            	mc.setCellStyle(cell.getCellStyle());
+            	mc0.setCellStyle(cell0.getCellStyle());
+            	
+            	mc.setRowNum(row.getRowNum());
+            	mc0.setRowNum(row.getRowNum());
+            	
+            	mc.setSourceColumnNum(efc.getMaxColumn()-1);
+            	mc0.setSourceColumnNum(efc.getMaxColumn());
+            	
+            	mc.setDestColumnNum(efc.getMaxColumn());
+            	mc0.setDestColumnNum(efc.getMaxColumn()-1);
+            	
+    			parentCell.add(mc);
+    			itemCell.add(mc0);
+    			
+    			//clear column
+    			row.removeCell(cell);
+    			row.removeCell(cell0);
+        	}
+		}
+		
+		List<List<MetaCell>> dataCell = new ArrayList();
+		dataCell.add(parentCell);
+		dataCell.add(itemCell);
+		
+		//paste or write data cell to destination column
+        for(List<MetaCell> mck: dataCell) {
+        	for(MetaCell mc: mck) {
+            	Row row = sheet.getRow(mc.getRowNum());
+            	Cell cell = row.createCell(mc.getDestColumnNum());
+            	cell.setCellValue(mc.getValue());
+            	cell.setCellStyle(mc.getCellStyle());
+            }
+        }
+		
+		//add merge
+		for (MetaCellMerge mc : cm1) {
+    		sheet.addMergedRegion(new CellRangeAddress(mc.getFirstRow(), mc.getLastRow(), (mc.getFirstCol()+1), (mc.getLastCol()+1)));
+		}
+		
+		//Write the workbook in file system
+        FileOutputStream out = new FileOutputStream(new File(efc.getDestination()));
+        workbook.write(out);
+        
+        //release
+        out.close();		
+        file.close();
 	}
 	
 	public static void rotateExcelDoubleMergeEfectPoi3(ExcelFormCode efc) throws IOException {
@@ -384,7 +485,6 @@ class DemoexcelpoiApplicationTests {
                    
                  }
             }
-           
         }	
         
         //add merge new column
@@ -571,11 +671,12 @@ class ExcelFormCode{
 	private int startRow;
 	private int parentNum;
 	private String subParentNum;
+	private int itemNum;
 	
 	public ExcelFormCode() {}
 	
 	public ExcelFormCode(String path, String destination, int maxColumn, String formCode, int startRow, int parentNum,
-			String subParentNum) {
+			String subParentNum, int itemNum) {
 		super();
 		this.path = path;
 		this.destination = destination;
@@ -584,8 +685,17 @@ class ExcelFormCode{
 		this.startRow = startRow;
 		this.parentNum = parentNum;
 		this.subParentNum = subParentNum;
+		this.itemNum = itemNum;
 	}
 	
+	public int getItemNum() {
+		return itemNum;
+	}
+
+	public void setItemNum(int itemNum) {
+		this.itemNum = itemNum;
+	}
+
 	public String getPath() {
 		return path;
 	}

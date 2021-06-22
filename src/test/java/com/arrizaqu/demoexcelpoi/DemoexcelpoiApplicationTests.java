@@ -1,15 +1,21 @@
 package com.arrizaqu.demoexcelpoi;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.poi.hssf.util.CellReference;
+import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
 import org.apache.poi.ss.usermodel.Cell;
 //import org.apache.poi.ss.usermodel.CellCopyPolicy;
 import org.apache.poi.ss.usermodel.CellStyle;
@@ -18,11 +24,17 @@ import org.apache.poi.ss.usermodel.DataFormatter;
 import org.apache.poi.ss.usermodel.DateUtil;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.usermodel.WorkbookFactory;
 import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
+
+import com.arrizaqu.demoexcelpoi.entity.ExcelFormCode;
+import com.arrizaqu.demoexcelpoi.entity.MetaCell;
+import com.arrizaqu.demoexcelpoi.entity.MetaCellMerge;
 
 @SpringBootTest
 class DemoexcelpoiApplicationTests {
@@ -31,24 +43,155 @@ class DemoexcelpoiApplicationTests {
 	void contextLoads() {
 	}
 	
-	@Test
-	void testPoi() throws IOException {
-		String path = "C:\\Users\\arrizaqu\\Desktop\\ExcelTemplate.xlsx";
-		String dest = "C:\\Users\\arrizaqu\\Desktop\\ExcelTemplateC.xlsx";
-		buildReConstructExcel(path, dest);
-	}
-	
 	
 	@Test
 	void testPoi2() throws IOException {
-		String path = "C:\\Users\\arrizaqu\\Desktop\\combinasi\\ExcelTemplate.xlsx";
-		String destination = "C:\\Users\\arrizaqu\\Desktop\\combinasi\\ExcelTemplateC.xlsx";
+		String path = "C:\\Users\\arrizaqu\\Desktop\\combinasi\\ExcelTemplateB.xlsx";
+		String destination = "C:\\Users\\arrizaqu\\Desktop\\combinasi\\ExcelTemplateBB.xlsx";
 		buildReConstructExcel_2(path, destination);
+	}
+	
+	@Test
+	void testPoi3() throws IOException {
+		
+		String path = "C:\\Users\\arrizaqu\\Desktop\\combinasi\\ExcelTemplateB.xlsx";
+		String dest = "C:\\Users\\arrizaqu\\Desktop\\combinasi\\ExcelTemplateBB.xlsx";
+		FileInputStream file = new FileInputStream(new File(path));
+		Workbook workbook = new XSSFWorkbook(file);
+		
+		//letter for database
+		List<Map<String, String>> listFormCalk = new ArrayList();
+		
+		Map<String, String> mm = new HashMap();
+		mm.put("formCode6", "4621100");
+		mm.put("type", "2");
+		mm.put("maxColumn", "6");
+		mm.put("startRow", "5");
+		mm.put("parentNum", "2");
+		mm.put("subParentNum", "3,3,3");
+		mm.put("itemNum", "0");
+		
+		Map<String, String> mm2 = new HashMap();
+		mm2.put("formCode6", "4611100a");
+		mm2.put("type", "2");
+		mm2.put("maxColumn", "6");
+		mm2.put("startRow", "7");
+		mm2.put("parentNum", "3");
+		mm2.put("subParentNum", "3,3,3");
+		mm2.put("itemNum", "0");
+		
+		Map<String, String> mm3 = new HashMap();
+		mm3.put("formCode6", "4695000");
+		mm3.put("type", "1");
+		mm3.put("maxColumn", "5");
+		mm3.put("startRow", "7");
+		mm3.put("parentNum", "24");
+		mm3.put("subParentNum", null);
+		mm3.put("itemNum", "13");
+		
+		Map<String, String> mm4 = new HashMap();
+		mm4.put("formCode6", "4626100");
+		mm4.put("type", "1");
+		mm4.put("maxColumn", "4");
+		mm4.put("startRow", "5");
+		mm4.put("parentNum", "3");
+		mm4.put("subParentNum", null);
+		mm4.put("itemNum", "3");
+		
+		listFormCalk.add(mm);
+		listFormCalk.add(mm2);
+		listFormCalk.add(mm3);
+		listFormCalk.add(mm4);
+		
+		//formcode from file
+		List<String> nameSheetFromFile = new ArrayList();
+		for (int i=0; i<workbook.getNumberOfSheets(); i++) {
+			nameSheetFromFile.add(workbook.getSheetName(i));
+		}
+		
+		for (Map<String, String> loopDataFormCalk : listFormCalk) {
+			String formCode = loopDataFormCalk.get("formCode6");
+			if(nameSheetFromFile.contains(formCode)) {
+				String type = loopDataFormCalk.get("type");
+				int maxColumn = Integer.parseInt(loopDataFormCalk.get("maxColumn"));
+				int startRow = Integer.parseInt(loopDataFormCalk.get("startRow"));
+				int parentNum = Integer.parseInt(loopDataFormCalk.get("parentNum"));
+				String subParentNum = loopDataFormCalk.get("subParentNum");
+				int itemNum = Integer.parseInt(loopDataFormCalk.get("itemNum"));
+				
+				ExcelFormCode efc = new ExcelFormCode(formCode, maxColumn, startRow, parentNum, subParentNum, itemNum);
+				
+				//excute mirroring
+				if(type.equals("1")) {
+					rotateMergeEfectPoi3(workbook, efc);
+				} else if(type.equals("2")) {
+					rotateExcelDoubleMergeEfectPoi3(workbook, efc);
+				}
+			}
+		}
+		
+		//Write the workbook in file system
+        FileOutputStream out = new FileOutputStream(new File(dest));
+        workbook.write(out);
+//        
+//        //release
+        file.close();
+        out.close();
+	}
+	
+	public static InputStream setColumnWidthExcel(InputStream excelInputStream, List<Map<String, String>> listFormCalkData) throws InvalidFormatException, IOException {
+		Workbook workbook = WorkbookFactory.create(excelInputStream);
+		
+		//form db
+		List<Map<String, String>> listFormCalk = listFormCalkData;
+		
+		//formcode from file
+		List<String> nameSheetFromFile = new ArrayList();
+		for (int i=0; i<workbook.getNumberOfSheets(); i++) {
+			nameSheetFromFile.add(workbook.getSheetName(i));
+		}
+		
+		for (Map<String, String> loopDataFormCalk : listFormCalk) {
+
+			String formCode = loopDataFormCalk.get("formCode6");
+			if(nameSheetFromFile.contains(formCode)) {
+				String type = loopDataFormCalk.get("type");
+				int maxColumn = Integer.parseInt(loopDataFormCalk.get("maxColumn"));
+				int startRow = Integer.parseInt(loopDataFormCalk.get("startRow"));
+				int parentNum = Integer.parseInt(loopDataFormCalk.get("parentNum"));
+				String subParentNum = loopDataFormCalk.get("subParentNum");
+				int itemNum = Integer.parseInt(loopDataFormCalk.get("itemNum"));
+				
+				ExcelFormCode efc = new ExcelFormCode(formCode, maxColumn, startRow, parentNum, subParentNum, itemNum);
+				
+				//excute mirroring
+				if(type.equals("1")) {
+					rotateMergeEfectPoi3(workbook, efc);
+				} else if(type.equals("2")) {
+					rotateExcelDoubleMergeEfectPoi3(workbook, efc);
+				}
+			}
+		}
+		
+		ByteArrayOutputStream fileOut = new ByteArrayOutputStream();
+		workbook.write(fileOut);
+		byte[] data = fileOut.toByteArray();
+		fileOut.close();
+		InputStream stream = new ByteArrayInputStream(data);
+
+		return stream;
+	}
+	
+	@Test
+	void testPoi() throws IOException {
+		String path = "C:\\Users\\arrizaqu\\Desktop\\combinasi\\ExcelTemplateA.xlsx";
+		String dest = "C:\\Users\\arrizaqu\\Desktop\\combinasi\\ExcelTemplateAB.xlsx";
+		buildReConstructExcel(path, dest);
 	}
 	
 	private void buildReConstructExcel(String path, String dest) throws IOException {
 		FileInputStream file = new FileInputStream(new File(path));
-		XSSFWorkbook workbook = new XSSFWorkbook(file);
+		Workbook workbook = new XSSFWorkbook(file);
 		
 		//data source formcode
 		List<ExcelFormCode> efcs = new ArrayList();
@@ -72,7 +215,7 @@ class DemoexcelpoiApplicationTests {
 		for(ExcelFormCode efc: efcs) {
 			rotateMergeEfectPoi3(workbook, efc);
 		}
-		
+//		
 		//Write the workbook in file system
         FileOutputStream out = new FileOutputStream(new File(dest));
         workbook.write(out);
@@ -84,12 +227,41 @@ class DemoexcelpoiApplicationTests {
 	
 	private void buildReConstructExcel_2(String path, String dest) throws IOException {
 		FileInputStream file = new FileInputStream(new File(path));
-		XSSFWorkbook workbook = new XSSFWorkbook(file);
+		Workbook workbook = new XSSFWorkbook(file);
 		
+		//form db
+		List<Map<String, String>> listFormCalk = new ArrayList();
+		
+		//formcode from file
+//		List<String> nameSheetFromFile = new ArrayList();
+//		for (int i=0; i<workbook.getNumberOfSheets(); i++) {
+//			nameSheetFromFile.add(workbook.getSheetName(i));
+//		}
+//		
+//		for (Map<String, String> loopDataFormCalk : listFormCalk) {
+////			if (loopDataFormCalk.get("formCode6").equals(formCode)) {}
+//			String formCode = loopDataFormCalk.get("formCode6");
+//			if(nameSheetFromFile.contains(formCode)) {
+//				String type = loopDataFormCalk.get("type");
+//				int maxColumn = Integer.parseInt(loopDataFormCalk.get("maxColumn"));
+//				int startRow = Integer.parseInt(loopDataFormCalk.get("startRow"));
+//				int parentNum = Integer.parseInt(loopDataFormCalk.get("parentNum"));
+//				String subParentNum = loopDataFormCalk.get("subParentNum");
+//				int itemNum = Integer.parseInt(loopDataFormCalk.get("itemNum"));
+//				
+//				ExcelFormCode efc = new ExcelFormCode(formCode, maxColumn, startRow, parentNum, subParentNum, itemNum);
+//				
+//				//excute mirroring
+//				if(type.equals("1")) {
+//					rotateMergeEfectPoi3(workbook, efc);
+//				} else if(type.equals("2")) {
+//					rotateExcelDoubleMergeEfectPoi3(workbook, efc);
+//				}
+//			}
+//		}
 		//data source formcode
 		List<ExcelFormCode> efcs = new ArrayList();
 		List<ExcelFormCode> efcDoubleMerge = new ArrayList();
-		
 		efcDoubleMerge.add(new ExcelFormCode("4625100",6, 5, 3, "3,3,3", 0));
 		efcDoubleMerge.add(new ExcelFormCode("4623100",6, 5, 2, "3,3,3", 0));
 		efcDoubleMerge.add(new ExcelFormCode("4622100",6, 5, 2, "3,3,3", 0));
@@ -106,13 +278,13 @@ class DemoexcelpoiApplicationTests {
 		efcs.add(new ExcelFormCode("4612000", 12, 7, 3, null, 8));
 		efcs.add(new ExcelFormCode("4611200a", 4, 7, 3, null, 3));
 		efcs.add(new ExcelFormCode("4611000", 12, 7, 3, null, 26));
-
-		//execute re-constract double rowspan / merge
+//
+//		//execute re-constract double rowspan / merge
 		for(ExcelFormCode drs: efcDoubleMerge) {
 			rotateExcelDoubleMergeEfectPoi3(workbook, drs);
 		}
-		
-		//execute re-constract singgle rowspan / merge
+//		
+//		//execute re-constract singgle rowspan / merge
 		for(ExcelFormCode ds: efcs) {
 			rotateMergeEfectPoi3(workbook, ds);
 		}
@@ -120,8 +292,8 @@ class DemoexcelpoiApplicationTests {
 		//Write the workbook in file system
         FileOutputStream out = new FileOutputStream(new File(dest));
         workbook.write(out);
-        
-        //release
+//        
+//        //release
         file.close();
         out.close();
 	}
@@ -132,8 +304,8 @@ class DemoexcelpoiApplicationTests {
 	 * 3. paste or write data cell to destination column
 	 * 4. adding merging new final colum of paste
 	 * */
-	public static void rotateMergeEfectPoi3(XSSFWorkbook workbook, ExcelFormCode efc) throws IOException {
-		XSSFSheet sheet = workbook.getSheet(efc.getFormCode());
+	public static void rotateMergeEfectPoi3(Workbook workbook, ExcelFormCode efc) throws IOException {
+		Sheet sheet = workbook.getSheet(efc.getFormCode());
 		DataFormatter dataFormatter = new DataFormatter();
 		int columnParent = efc.getMaxColumn();
 		
@@ -231,8 +403,8 @@ class DemoexcelpoiApplicationTests {
 
 	}
 	
-	public static void rotateExcelDoubleMergeEfectPoi3(XSSFWorkbook workbook, ExcelFormCode efc) throws IOException {
-		XSSFSheet sheet = workbook.getSheet(efc.getFormCode());
+	public static void rotateExcelDoubleMergeEfectPoi3(Workbook workbook, ExcelFormCode efc) throws IOException {
+		Sheet sheet = workbook.getSheet(efc.getFormCode());
 		DataFormatter dataFormatter = new DataFormatter();
 		int columnDest = efc.getMaxColumn()+1;
 		int columnParent = columnDest+1;
@@ -369,164 +541,4 @@ class DemoexcelpoiApplicationTests {
 	    	pq = pq + 2;
         }
 	}
-}
-
-class MetaCellMerge{
-	
-	public MetaCellMerge(int firstRow, int lastRow, int firstCol, int lastCol) {
-		super();
-		this.firstRow = firstRow;
-		this.lastRow = lastRow;
-		this.firstCol = firstCol;
-		this.lastCol = lastCol;
-	}
-	private int firstRow;
-	private int lastRow;
-	private int firstCol;
-	private int lastCol;
-	public int getFirstRow() {
-		return firstRow;
-	}
-	public void setFirstRow(int firstRow) {
-		this.firstRow = firstRow;
-	}
-	public int getLastRow() {
-		return lastRow;
-	}
-	public void setLastRow(int lastRow) {
-		this.lastRow = lastRow;
-	}
-	public int getFirstCol() {
-		return firstCol;
-	}
-	public void setFirstCol(int firstCol) {
-		this.firstCol = firstCol;
-	}
-	public int getLastCol() {
-		return lastCol;
-	}
-	public void setLastCol(int lastCol) {
-		this.lastCol = lastCol;
-	}
-}
-
-class MetaCell{
-	
-	String value;
-	CellStyle cellStyle;
-	String cellFormula;
-	int rowNum;
-	int sourceColumnNum;
-	int destColumnNum;
-	
-	public int getSourceColumnNum() {
-		return sourceColumnNum;
-	}
-
-	public void setSourceColumnNum(int sourceColumnNum) {
-		this.sourceColumnNum = sourceColumnNum;
-	}
-
-	public int getDestColumnNum() {
-		return destColumnNum;
-	}
-
-	public void setDestColumnNum(int destColumnNum) {
-		this.destColumnNum = destColumnNum;
-	}
-
-	public int getRowNum() {
-		return rowNum;
-	}
-
-	public void setRowNum(int rowNum) {
-		this.rowNum = rowNum;
-	}
-
-	public String getValue() {
-		return value;
-	}
-
-	public void setValue(String value) {
-		this.value = value;
-	}
-
-	public CellStyle getCellStyle() {
-		return cellStyle;
-	}
-
-	public void setCellStyle(CellStyle cellStyle) {
-		this.cellStyle = cellStyle;
-	}
-
-	public String getCellFormula() {
-		return cellFormula;
-	}
-
-	public void setCellFormula(String cellFormula) {
-		this.cellFormula = cellFormula;
-	}
-}
-
-class ExcelFormCode{
-	private int maxColumn;
-	private String formCode;
-	private int startRow;
-	private int parentNum;
-	private String subParentNum;
-	private int itemNum;
-	
-	public ExcelFormCode() {}
-	
-	public ExcelFormCode(String formCode,int maxColumn, int startRow, int parentNum,
-			String subParentNum, int itemNum) {
-		super();
-	
-		this.maxColumn = maxColumn;
-		this.formCode = formCode;
-		this.startRow = startRow;
-		this.parentNum = parentNum;
-		this.subParentNum = subParentNum;
-		this.itemNum = itemNum;
-	}
-	
-	public int getItemNum() {
-		return itemNum;
-	}
-
-	public void setItemNum(int itemNum) {
-		this.itemNum = itemNum;
-	}
-
-	public int getMaxColumn() {
-		return maxColumn;
-	}
-	public void setMaxColumn(int maxColumn) {
-		this.maxColumn = maxColumn;
-	}
-	public String getFormCode() {
-		return formCode;
-	}
-	public void setFormCode(String formCode) {
-		this.formCode = formCode;
-	}
-	public int getStartRow() {
-		return startRow;
-	}
-	public void setStartRow(int startRow) {
-		this.startRow = startRow;
-	}
-	public int getParentNum() {
-		return parentNum;
-	}
-	public void setParentNum(int parentNum) {
-		this.parentNum = parentNum;
-	}
-	public String getSubParentNum() {
-		return subParentNum;
-	}
-	public void setSubParentNum(String subParentNum) {
-		this.subParentNum = subParentNum;
-	}
-	
 }

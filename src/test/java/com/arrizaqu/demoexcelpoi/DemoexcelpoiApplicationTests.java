@@ -46,8 +46,8 @@ class DemoexcelpoiApplicationTests {
 	
 	@Test
 	void testPoi2() throws IOException {
-		String path = "C:\\Users\\arrizaqu\\Desktop\\combinasi\\ExcelTemplateB.xlsx";
-		String destination = "C:\\Users\\arrizaqu\\Desktop\\combinasi\\ExcelTemplateBB.xlsx";
+		String path = "C:\\Users\\arrizaqu\\Desktop\\combinasi\\bugfix\\ExcelTemplate.xlsx";
+		String destination = "C:\\Users\\arrizaqu\\Desktop\\combinasi\\bugfix\\target\\ExcelTemplateResult.xlsx";
 		buildReConstructExcel_2(path, destination);
 	}
 	
@@ -139,7 +139,7 @@ class DemoexcelpoiApplicationTests {
         out.close();
 	}
 	
-	public static InputStream setColumnWidthExcel(InputStream excelInputStream, List<Map<String, String>> listFormCalkData) throws InvalidFormatException, IOException {
+	public static InputStream rotateExcelRightTable(InputStream excelInputStream, List<Map<String, String>> listFormCalkData) throws InvalidFormatException, IOException {
 		Workbook workbook = WorkbookFactory.create(excelInputStream);
 		
 		//form db
@@ -262,12 +262,15 @@ class DemoexcelpoiApplicationTests {
 		//data source formcode
 		List<ExcelFormCode> efcs = new ArrayList();
 		List<ExcelFormCode> efcDoubleMerge = new ArrayList();
+		//formCode,int maxColumn, int startRow, int parentNum, String subParentNum, int itemNum)
+		//double rowspan 
 		efcDoubleMerge.add(new ExcelFormCode("4625100",6, 5, 3, "3,3,3", 0));
 		efcDoubleMerge.add(new ExcelFormCode("4623100",6, 5, 2, "3,3,3", 0));
 		efcDoubleMerge.add(new ExcelFormCode("4622100",6, 5, 2, "3,3,3", 0));
 		efcDoubleMerge.add(new ExcelFormCode("4621100",6, 5, 2, "3,3,3", 0));
 		efcDoubleMerge.add(new ExcelFormCode("4611100a",6, 7, 3, "3,3,3", 0));
 		
+		//single rowspan
 		efcs.add(new ExcelFormCode("4695000", 5, 7, 24, null, 13));
 		efcs.add(new ExcelFormCode("4626100", 4, 5, 3, null, 3));
 		efcs.add(new ExcelFormCode("4624100", 4, 5, 6, null, 3));

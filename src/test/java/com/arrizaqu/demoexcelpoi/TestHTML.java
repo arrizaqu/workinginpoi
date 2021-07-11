@@ -67,6 +67,28 @@ public class TestHTML {
 		out.write(mybytes);
 	}
 	
+	@Test //example merger for double rowspan
+	public void testMergerDoubleRowspan() throws IOException {
+		String path = "C:\\Users\\arrizaqu\\Desktop\\combinasi\\4611100a_double.html";
+		String dest = "C:\\Users\\arrizaqu\\Desktop\\combinasi\\4611100a_double_result.html";
+		
+		Map<String, String> mm = new HashMap();
+		File input = new File(path);
+		Document doc = Jsoup.parse(input, "UTF-8");
+		
+		//merge html
+		reBuildHTMLMerger(doc);
+		//rotatehtml
+		buildRotateHTML(doc);
+		
+		//output
+		FileOutputStream out = new FileOutputStream(new File(dest));
+		String text = doc.toString();
+		byte[] mybytes = text.getBytes();
+		
+		out.write(mybytes);
+	}
+	
 	public void reBuildHTMLMerger(Document doc) {
 		// TODO Auto-generated method stub
 		Elements tRow = doc.select("table").get(0).select("tr");
@@ -83,6 +105,11 @@ public class TestHTML {
 			int maxColumn = tRow.get(startRow).select("td").size()-1;
 			int itemNum = Integer.parseInt(tRow.get(startRow).select("td").get(0).attr("rowspan"));
 			int parentNum = (tRow.size()-startRow)/itemNum;
+			
+//			System.out.println("startRow : "+ startRow);
+//			System.out.println("maxColumn : "+ maxColumn);
+//			System.out.println("itemNum :"+ itemNum);
+//			System.out.println("parentNum : "+ parentNum);
 			
 			//jika merger untuk single rowspan
 			int startA = 0;
@@ -118,7 +145,88 @@ public class TestHTML {
 				tRow.get(1).select("td").get(startA-4).remove();
 				
 			} else if(isMerge == 2) { //merge untuk double rowspan
+				//mencari posisi column headerLeft tpi bukan di column 1 - 2
+				Elements columns = tRow.get(startRow).select("td");
+				for (int i = 0; i < columns.size(); i++) {
+					if(columns.get(i).hasClass("rowHeaderLeft") && i >= 2) {
+						startA = i;
+					}
+				}
 				
+				System.out.println("START A : "+ startA);
+				
+				//delete row parent
+				int aRow = startRow; //(3+9),(12+9)
+				int add = 0;
+				List<Integer> mergePoints = new ArrayList();
+				for (int i = 0; i < parentNum; i++) {
+					//delete parentRow
+					tRow.get(aRow).select("td").get(startA-5).remove();
+					tRow.get(aRow).select("td").get(startA-3).remove();
+					tRow.get(aRow).select("td").get(startA-3).remove();
+					
+					int defultV = Integer.parseInt(tRow.get(aRow).select("td").get(startA-5).attr("rowspan"));
+					int dst = defultV*2;
+					
+					//delete itemRow
+					for (int j = 0; j < defultV; j++) {
+						if(j == 0) {
+							//delete column sayap kanan (table kiri)
+							tRow.get(aRow+j).select("td").get(startA-5).remove();
+							tRow.get(aRow+j).select("td").get(startA-5).remove();
+							tRow.get(aRow+j).select("td").get(startA-5).remove();
+							
+							//get rs for parent after
+							int ab = 0;
+							for (int j2 = 0; j2 < defultV-1; j2++) {
+								mergePoints.add((dst+add)+ab);
+								ab = ab + defultV;
+							}
+							add = add + itemNum;
+						} else {
+							//delete column sayap kanan (table kiri)
+							tRow.get(aRow+j).select("td").get(startA-6).remove();
+							tRow.get(aRow+j).select("td").get(startA-7).remove();
+						}
+						
+					}
+					aRow = aRow + itemNum;
+				}
+				
+				for (int i = 0; i < mergePoints.size(); i++) {
+					int defultV2 = Integer.parseInt(tRow.get(mergePoints.get(i)).select("td").get(0).attr("rowspan"));
+					for (int j = 0; j < defultV2; j++) {
+						if(j == 0) {
+							//delete column sayap kanan (table kiri)
+							tRow.get(mergePoints.get(i)+j).select("td").get(startA-6).remove();
+							tRow.get(mergePoints.get(i)+j).select("td").get(startA-6).remove();
+							tRow.get(mergePoints.get(i)+j).select("td").get(startA-6).remove();
+							tRow.get(mergePoints.get(i)+j).select("td").get(startA-6).remove();
+						} else {
+							//delete column sayap kanan (table kiri)
+							tRow.get(mergePoints.get(i)+j).select("td").get(startA-6).remove();
+							tRow.get(mergePoints.get(i)+j).select("td").get(startA-7).remove();
+						}
+					}
+				}
+				
+				tRow.get(1).select("td").get(startA-7).remove();
+				tRow.get(1).select("td").get(startA-7).remove();
+//				int defultV2 = Integer.parseInt(tRow.get(9).select("td").get(0).attr("rowspan"));
+//				for (int j = 0; j < defultV2; j++) {
+//					if(j == 0) {
+//						//delete column sayap kanan (table kiri)
+//						tRow.get(9+j).select("td").get(startA-6).remove();
+//						tRow.get(9+j).select("td").get(startA-6).remove();
+//						tRow.get(9+j).select("td").get(startA-6).remove();
+//						tRow.get(9+j).select("td").get(startA-6).remove();
+//					} else {
+//						//delete column sayap kanan (table kiri)
+//						tRow.get(9+j).select("td").get(startA-6).remove();
+//						tRow.get(9+j).select("td").get(startA-7).remove();
+//					}
+//				}
+//				
 			}
 		}
 		
@@ -174,10 +282,10 @@ public class TestHTML {
 		int itemNum = Integer.parseInt(tRow.get(startRow).select("td").get(0).attr("rowspan"));
 		int parentNum = (tRow.size()-startRow)/itemNum;
 
-		System.out.println("startRow : "+ startRow);
-		System.out.println("maxColumn : "+ maxColumn);
-		System.out.println("itemNum :"+ itemNum);
-		System.out.println("parentNum : "+ parentNum);
+//		System.out.println("startRow : "+ startRow);
+//		System.out.println("maxColumn : "+ maxColumn);
+//		System.out.println("itemNum :"+ itemNum);
+//		System.out.println("parentNum : "+ parentNum);
 		
 		//setup variable 
 		List<MetaCellMerge> cellRows = new ArrayList<>();
